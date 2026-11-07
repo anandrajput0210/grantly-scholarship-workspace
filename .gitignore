@@ -5,3 +5,4 @@ dist/
 !.env.example
 .vercel/
 package-lock.backup.json
+.engine-test-build/
