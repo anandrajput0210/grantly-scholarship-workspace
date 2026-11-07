@@ -55,8 +55,13 @@ import type { ScholarshipRecommendation } from './engine/recommendations';
 type Page = 'overview' | 'discover' | 'applications' | 'documents' | 'profile';
 type CategoryFilter = 'all' | Scholarship['category'];
 type LevelFilter = 'all' | 'undergraduate' | 'postgraduate';
+type QuickFilter = 'all' | 'requirements-matched' | 'closing-week';
 
 const currency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+const getTimeGreeting = (now: Date = new Date()) => {
+  const hour = now.getHours();
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+};
 const dateLabel = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const shortDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const categoryLabel: Record<Scholarship['category'], string> = {
@@ -271,6 +276,8 @@ function ScholarshipCard({ recommendation, saved, applied, compareSelected, comp
 }) {
   const { scholarship, assessment } = recommendation;
   const eligibleCount = assessment.results.filter((item) => item.status === 'matched').length;
+  const matchedHighlight = assessment.results.find((item) => item.status === 'matched');
+  const attentionHighlight = assessment.results.find((item) => item.status !== 'matched');
   const hardMismatch = assessment.results.some((result) => result.status === 'not_matched');
   const deadlineClosed = recommendation.deadline.urgency === 'closed' || recommendation.deadline.urgency === 'none';
   const fitClass = recommendation.fitLabel === 'Strong fit'
@@ -293,6 +300,11 @@ function ScholarshipCard({ recommendation, saved, applied, compareSelected, comp
     <div className="mt-4 flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">{categoryLabel[scholarship.category]}</span><span className="text-[10px] font-semibold capitalize text-muted">{scholarship.studyLevel === 'all' ? 'All study levels' : scholarship.studyLevel}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${fitClass}`}>{recommendation.fitLabel}</span></div>
     <h3 className="mt-3 font-display text-[17px] font-extrabold leading-6 tracking-[-.025em] text-ink">{scholarship.title}</h3>
     <p className="mt-1 text-xs text-muted">{scholarship.provider}</p>
+    <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Why this opportunity may fit">
+      {matchedHighlight && <span title={matchedHighlight.explanation} className="inline-flex max-w-full items-center gap-1 rounded-full bg-green-soft px-2 py-1 text-[10px] font-semibold text-green-dark"><Check size={11} /><span className="max-w-[190px] truncate">Matches: {matchedHighlight.label}</span></span>}
+      {attentionHighlight && <span title={attentionHighlight.explanation} className="inline-flex max-w-full items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800"><CircleHelp size={11} /><span className="max-w-[190px] truncate">{attentionHighlight.status === 'document_missing' ? 'Document needed' : attentionHighlight.status === 'needs_verification' ? 'Needs verification' : 'Review requirement'}: {attentionHighlight.label}</span></span>}
+      {!matchedHighlight && !attentionHighlight && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-muted">No listed requirements</span>}
+    </div>
     <p className="mt-3 line-clamp-2 min-h-[40px] text-xs leading-5 text-muted">{scholarship.description}</p>
     <div className="mt-4 flex items-end justify-between border-t border-line pt-4">
       <div><div className="eyebrow">Award amount</div><div className="mt-1 font-display text-xl font-extrabold tracking-[-.04em] text-ink">{currency(scholarship.amount)}</div></div>
@@ -397,6 +409,66 @@ function ScholarshipModal({ scholarship, assessment, saved, applied, onClose, on
   </div>;
 }
 
+
+function TodayPanel({ actions, recommendations, onOpenAction, onNavigate }: {
+  actions: ActionItem[];
+  recommendations: ScholarshipRecommendation[];
+  onOpenAction: (action: ActionItem) => void;
+  onNavigate: (page: Page) => void;
+}) {
+  const primary = actions[0];
+  const secondary = actions.slice(1, 3);
+  const related = primary?.scholarshipId
+    ? recommendations.find((item) => item.scholarship.id === primary.scholarshipId)
+    : undefined;
+  const PrimaryIcon = primary?.actionType === 'upload_document'
+    ? Upload
+    : primary?.actionType === 'review_deadline'
+      ? Clock3
+      : UserRound;
+
+  return <Card className="overflow-hidden">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-5 sm:px-6">
+      <div>
+        <div className="eyebrow">Today · your action center</div>
+        <h3 className="mt-1 font-display text-lg font-extrabold tracking-[-.03em] text-ink">What should I do next?</h3>
+        <p className="mt-1 text-xs text-muted">A focused next step, based on your profile, documents and deadlines.</p>
+      </div>
+      {actions.length > 0 && <span className="rounded-full bg-green-soft px-2.5 py-1 text-[10px] font-bold text-green-dark">{actions.length} suggested action{actions.length === 1 ? '' : 's'}</span>}
+    </div>
+    {primary ? <>
+      <div className="bg-[#F0F5F0] p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] text-green-dark"><Sparkles size={11} /> Recommended next step</span>
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] ${primary.priority === 'high' ? 'bg-red-soft text-red' : primary.priority === 'medium' ? 'bg-amber-soft text-amber' : 'bg-white text-muted'}`}>{primary.priority} priority</span>
+        </div>
+        <div className="mt-4 flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-green-dark shadow-sm"><PrimaryIcon size={20} /></div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-display text-lg font-extrabold leading-6 tracking-[-.025em] text-ink">{primary.title}</h4>
+            <p className="mt-1 text-xs leading-5 text-muted">{primary.description}</p>
+            {related && <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-ink"><CalendarDays size={12} className="text-muted" /> {related.scholarship.title} · {related.deadline.label}</p>}
+            <button onClick={() => onOpenAction(primary)} className="btn-primary mt-4 px-3 py-2 text-xs">Take this step <ArrowRight size={13} /></button>
+          </div>
+        </div>
+      </div>
+      {secondary.length > 0 && <div className="divide-y divide-line">
+        {secondary.map((action) => <button key={action.id} onClick={() => onOpenAction(action)} className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition hover:bg-slate-50 sm:px-6">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-muted">{action.actionType === 'upload_document' ? <Upload size={14} /> : action.actionType === 'review_deadline' ? <Clock3 size={14} /> : <UserRound size={14} />}</span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-bold text-ink">{action.title}</span><span className="mt-0.5 block truncate text-[10px] text-muted">{action.description}</span></span>
+          <ChevronRight size={15} className="shrink-0 text-muted" />
+        </button>)}
+      </div>}
+    </> : <div className="px-6 py-9 text-center">
+      <CircleCheck className="mx-auto text-green" size={27} />
+      <p className="mt-2 text-sm font-bold text-ink">You're up to date</p>
+      <p className="mt-1 text-xs text-muted">No immediate actions were generated from your current profile and applications.</p>
+      <button onClick={() => onNavigate('discover')} className="btn-secondary mt-4">Explore opportunities <ArrowRight size={13} /></button>
+    </div>}
+    {actions.length > 3 && <div className="border-t border-line px-5 py-3 sm:px-6"><button onClick={() => onNavigate('applications')} className="text-xs font-bold text-green-dark hover:underline">View application workspace <ArrowRight size={13} className="ml-1 inline" /></button></div>}
+  </Card>;
+}
+
 function Dashboard({ state, recommendations, actions, onNavigate, onOpen, onOpenAction }: {
   state: AppState;
   recommendations: ScholarshipRecommendation[];
@@ -414,7 +486,7 @@ function Dashboard({ state, recommendations, actions, onNavigate, onOpen, onOpen
   return <div className="space-y-7">
     <section className="relative overflow-hidden rounded-[26px] bg-ink px-6 py-7 text-white shadow-soft sm:px-8 sm:py-8">
       <div className="absolute -right-12 -top-20 h-64 w-64 rounded-full border border-white/10" /><div className="absolute -right-2 -top-10 h-48 w-48 rounded-full border border-white/10" /><div className="absolute -bottom-24 right-40 h-40 w-40 rounded-full bg-green/20 blur-3xl" />
-      <div className="relative max-w-2xl"><div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.15em] text-[#B9DCCB]"><Sparkles size={13} /> Your scholarship workspace</div><h2 className="mt-4 font-display text-[27px] font-extrabold leading-tight tracking-[-.05em] sm:text-[36px]">Good afternoon, {name}.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">The next step is easier when you know what matters. Explore relevant opportunities, resolve requirements, and keep your applications moving.</p><div className="mt-5 flex flex-wrap gap-2"><button onClick={() => onNavigate('discover')} className="inline-flex items-center gap-2 rounded-xl bg-[#BDE2CC] px-4 py-2.5 text-xs font-bold text-ink transition hover:bg-white">Explore scholarships <ArrowRight size={14} /></button><button onClick={() => onNavigate('applications')} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/10">View applications</button></div></div>
+      <div className="relative max-w-2xl"><div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.15em] text-[#B9DCCB]"><Sparkles size={13} /> Your scholarship workspace</div><h2 className="mt-4 font-display text-[27px] font-extrabold leading-tight tracking-[-.05em] sm:text-[36px]">{getTimeGreeting()}, {name}.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">The next step is easier when you know what matters. Explore relevant opportunities, resolve requirements, and keep your applications moving.</p><div className="mt-5 flex flex-wrap gap-2"><button onClick={() => onNavigate('discover')} className="inline-flex items-center gap-2 rounded-xl bg-[#BDE2CC] px-4 py-2.5 text-xs font-bold text-ink transition hover:bg-white">Explore scholarships <ArrowRight size={14} /></button><button onClick={() => onNavigate('applications')} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/10">View applications</button></div></div>
     </section>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -431,14 +503,7 @@ function Dashboard({ state, recommendations, actions, onNavigate, onOpen, onOpen
         {recommended.length === 0 && <div className="px-6 py-8 text-center text-sm text-muted">No open opportunities in the current demo catalogue.</div>}
       </Card>
 
-      <Card className="overflow-hidden">
-        <div className="border-b border-line px-5 py-5 sm:px-6"><div className="eyebrow">Move forward</div><h3 className="mt-1 font-display text-lg font-extrabold tracking-[-.03em] text-ink">Your next best actions</h3><p className="mt-1 text-xs text-muted">Prioritised from requirement blockers and deadlines.</p></div>
-        <div className="divide-y divide-line">
-          {actions.slice(0, 4).map((action) => <button key={action.id} onClick={() => onOpenAction(action)} className="flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50 sm:px-6"><div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${action.priority === 'high' ? 'bg-red-soft text-red' : action.priority === 'medium' ? 'bg-amber-soft text-amber' : 'bg-slate-100 text-slate-600'}`}>{action.actionType === 'upload_document' ? <Upload size={15} /> : action.actionType === 'review_deadline' ? <Clock3 size={15} /> : <UserRound size={15} />}</div><div className="min-w-0 flex-1"><div className="text-xs font-bold leading-5 text-ink">{action.title}</div><p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted">{action.description}</p><span className={`mt-1.5 inline-block text-[9px] font-extrabold uppercase tracking-[.12em] ${action.priority === 'high' ? 'text-red' : action.priority === 'medium' ? 'text-amber' : 'text-muted'}`}>{action.priority} priority</span></div><ChevronRight size={15} className="mt-1 shrink-0 text-muted" /></button>)}
-          {actions.length === 0 && <div className="px-6 py-10 text-center"><CircleCheck className="mx-auto text-green" size={25} /><p className="mt-2 text-sm font-bold text-ink">You're up to date</p><p className="mt-1 text-xs text-muted">No immediate actions were generated from your current data.</p></div>}
-        </div>
-        {actions.length > 4 && <div className="border-t border-line px-5 py-3"><button onClick={() => onNavigate('applications')} className="text-xs font-bold text-green-dark">See all actions <ArrowRight size={13} className="ml-1 inline" /></button></div>}
-      </Card>
+      <TodayPanel actions={actions} recommendations={recommendations} onOpenAction={onOpenAction} onNavigate={onNavigate} />
     </div>
 
     <div className="grid gap-6 lg:grid-cols-[1fr_.8fr]">
@@ -465,22 +530,27 @@ function Discovery({ state, recommendations, onOpen, onSave, onApply }: {
   const [level, setLevel] = useState<LevelFilter>('all');
   const [sort, setSort] = useState<'recommended' | 'deadline' | 'amount'>('recommended');
   const [savedOnly, setSavedOnly] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = recommendations.filter(({ scholarship }) => {
+    const list = recommendations.filter((recommendation) => {
+      const { scholarship, assessment, deadline } = recommendation;
       const matchesQuery = !q || `${scholarship.title} ${scholarship.provider} ${scholarship.description}`.toLowerCase().includes(q);
       const matchesCategory = category === 'all' || scholarship.category === category;
       const matchesLevel = level === 'all' || scholarship.studyLevel === 'all' || scholarship.studyLevel === level;
       const matchesSaved = !savedOnly || state.savedScholarshipIds.includes(scholarship.id);
-      return matchesQuery && matchesCategory && matchesLevel && matchesSaved;
+      const matchesQuickFilter = quickFilter === 'all'
+        || (quickFilter === 'requirements-matched' && assessment.canApply && deadline.daysUntilDeadline !== null && deadline.daysUntilDeadline >= 0)
+        || (quickFilter === 'closing-week' && deadline.daysUntilDeadline !== null && deadline.daysUntilDeadline >= 0 && deadline.daysUntilDeadline <= 7);
+      return matchesQuery && matchesCategory && matchesLevel && matchesSaved && matchesQuickFilter;
     });
     if (sort === 'deadline') return sortRecommendationsByDeadline(list);
     if (sort === 'amount') list.sort((a, b) => b.scholarship.amount - a.scholarship.amount);
     return list;
-  }, [recommendations, query, category, level, sort, savedOnly, state.savedScholarshipIds]);
+  }, [recommendations, query, category, level, sort, savedOnly, quickFilter, state.savedScholarshipIds]);
 
   const comparisonItems = compareIds
     .map((id) => recommendations.find((item) => item.scholarship.id === id))
@@ -495,10 +565,17 @@ function Discovery({ state, recommendations, onOpen, onSave, onApply }: {
   return <div className="space-y-6">
     <section className="rounded-[24px] bg-[#EAF0E9] px-5 py-6 sm:px-7"><div className="flex flex-wrap items-end justify-between gap-4"><div className="max-w-xl"><div className="eyebrow text-green-dark">Opportunity discovery</div><h2 className="mt-2 font-display text-2xl font-extrabold tracking-[-.04em] text-ink sm:text-[30px]">Find an opportunity that fits your next chapter.</h2><p className="mt-2 text-sm leading-6 text-muted">Recommendations are ranked from your actual requirement results. Compare up to three opportunities before deciding what to track.</p></div><div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3"><div className="font-display text-2xl font-extrabold text-ink">{scholarships.length}</div><div className="text-[10px] font-bold uppercase tracking-[.12em] text-muted">Demo opportunities</div></div></div></section>
     <Card className="p-4 sm:p-5"><div role="search" aria-label="Filter scholarship opportunities" className="grid gap-3 lg:grid-cols-[1fr_190px_190px_175px]"><label className="relative block"><span className="sr-only">Search scholarships</span><Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input className="field pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search scholarships, providers, keywords..." /></label><label><span className="sr-only">Filter by category</span><select className="field" value={category} onChange={(event) => setCategory(event.target.value as CategoryFilter)}><option value="all">All categories</option><option value="merit">Merit-based</option><option value="need_based">Need-based</option><option value="stem">STEM</option><option value="diversity">Community</option></select></label><label><span className="sr-only">Filter by study level</span><select className="field" value={level} onChange={(event) => setLevel(event.target.value as LevelFilter)}><option value="all">All study levels</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option></select></label><label><span className="sr-only">Sort scholarships</span><select className="field" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="recommended">Best profile fit</option><option value="deadline">Soonest deadline</option><option value="amount">Highest award</option></select></label></div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted"><div className="flex flex-wrap items-center gap-3"><span className="inline-flex items-center gap-1.5"><Filter size={13} /> {filtered.length} opportunities shown</span><button onClick={() => setSavedOnly((current) => !current)} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 font-bold ${savedOnly ? 'bg-green-soft text-green-dark' : 'text-muted hover:bg-slate-100'}`}><Bookmark size={12} fill={savedOnly ? 'currentColor' : 'none'} /> Saved only</button></div><div className="flex flex-wrap items-center gap-2"><button disabled={compareIds.length < 2} onClick={() => setCompareOpen(true)} aria-label={`Compare selected opportunities, ${compareIds.length} of 3 selected`} className="btn-primary px-3 py-2 text-xs disabled:opacity-40">Compare ({compareIds.length}/3)</button>{compareIds.length > 0 && <button onClick={() => setCompareIds([])} className="font-bold text-muted hover:text-ink">Clear comparison</button>}<button onClick={() => { setQuery(''); setCategory('all'); setLevel('all'); setSort('recommended'); setSavedOnly(false); }} className="font-bold text-green-dark hover:underline">Reset filters</button></div></div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Quick scholarship filters">
+        <span className="mr-1 text-[10px] font-bold uppercase tracking-[.1em] text-muted">Quick filters</span>
+        <button onClick={() => setQuickFilter('all')} aria-pressed={quickFilter === 'all'} className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${quickFilter === 'all' ? 'border-green bg-green-soft text-green-dark' : 'border-line bg-white text-muted hover:bg-slate-50'}`}>All opportunities</button>
+        <button onClick={() => setQuickFilter('requirements-matched')} aria-pressed={quickFilter === 'requirements-matched'} className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${quickFilter === 'requirements-matched' ? 'border-green bg-green-soft text-green-dark' : 'border-line bg-white text-muted hover:bg-slate-50'}`}>All requirements matched</button>
+        <button onClick={() => setQuickFilter('closing-week')} aria-pressed={quickFilter === 'closing-week'} className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${quickFilter === 'closing-week' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-line bg-white text-muted hover:bg-slate-50'}`}>Closing this week</button>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted"><div className="flex flex-wrap items-center gap-3"><span className="inline-flex items-center gap-1.5"><Filter size={13} /> {filtered.length} opportunities shown</span><button onClick={() => setSavedOnly((current) => !current)} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 font-bold ${savedOnly ? 'bg-green-soft text-green-dark' : 'text-muted hover:bg-slate-100'}`}><Bookmark size={12} fill={savedOnly ? 'currentColor' : 'none'} /> Saved only</button></div><div className="flex flex-wrap items-center gap-2"><button disabled={compareIds.length < 2} onClick={() => setCompareOpen(true)} aria-label={`Compare selected opportunities, ${compareIds.length} of 3 selected`} className="btn-primary px-3 py-2 text-xs disabled:opacity-40">Compare ({compareIds.length}/3)</button>{compareIds.length > 0 && <button onClick={() => setCompareIds([])} className="font-bold text-muted hover:text-ink">Clear comparison</button>}<button onClick={() => { setQuery(''); setCategory('all'); setLevel('all'); setSort('recommended'); setSavedOnly(false); setQuickFilter('all'); }} className="font-bold text-green-dark hover:underline">Reset filters</button></div></div>
       {compareIds.length === 1 && <p className="mt-2 text-[10px] text-muted">Select one more opportunity to compare side by side. You can compare up to three.</p>}
     </Card>
-    {filtered.length ? <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{filtered.map((recommendation) => <ScholarshipCard key={recommendation.scholarship.id} recommendation={recommendation} saved={state.savedScholarshipIds.includes(recommendation.scholarship.id)} applied={state.applications.some((application) => application.scholarshipId === recommendation.scholarship.id)} compareSelected={compareIds.includes(recommendation.scholarship.id)} compareDisabled={compareIds.length >= 3} onOpen={() => onOpen(recommendation.scholarship)} onSave={() => onSave(recommendation.scholarship.id)} onApply={() => onApply(recommendation.scholarship.id)} onCompare={() => toggleCompare(recommendation.scholarship.id)} />)}</div> : <Card className="px-6 py-14 text-center"><Search className="mx-auto text-slate-300" size={30} /><h3 className="mt-3 font-display text-lg font-extrabold text-ink">No scholarships found</h3><p className="mt-1 text-sm text-muted">Try changing your search or filters.</p><button className="btn-secondary mt-4" onClick={() => { setQuery(''); setCategory('all'); setLevel('all'); setSort('recommended'); setSavedOnly(false); }}>Clear filters</button></Card>}
+    {filtered.length ? <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{filtered.map((recommendation) => <ScholarshipCard key={recommendation.scholarship.id} recommendation={recommendation} saved={state.savedScholarshipIds.includes(recommendation.scholarship.id)} applied={state.applications.some((application) => application.scholarshipId === recommendation.scholarship.id)} compareSelected={compareIds.includes(recommendation.scholarship.id)} compareDisabled={compareIds.length >= 3} onOpen={() => onOpen(recommendation.scholarship)} onSave={() => onSave(recommendation.scholarship.id)} onApply={() => onApply(recommendation.scholarship.id)} onCompare={() => toggleCompare(recommendation.scholarship.id)} />)}</div> : <Card className="px-6 py-14 text-center"><Search className="mx-auto text-slate-300" size={30} /><h3 className="mt-3 font-display text-lg font-extrabold text-ink">No scholarships found</h3><p className="mt-1 text-sm text-muted">Try changing your search or filters.</p><button className="btn-secondary mt-4" onClick={() => { setQuery(''); setCategory('all'); setLevel('all'); setSort('recommended'); setSavedOnly(false); setQuickFilter('all'); }}>Clear filters</button></Card>}
     <DemoNotice />
     {compareOpen && comparisonItems.length >= 2 && <ComparisonModal items={comparisonItems} onClose={() => setCompareOpen(false)} onRemove={(id) => { toggleCompare(id); if (comparisonItems.length <= 2) setCompareOpen(false); }} onOpen={(scholarship) => { setCompareOpen(false); onOpen(scholarship); }} />}
   </div>;
@@ -676,8 +753,89 @@ function isAppState(value: unknown): value is AppState {
     candidate.savedScholarshipIds.every((id) => typeof id === 'string');
 }
 
+
+function OnboardingWizard({ profile, documents, onComplete, onSkip }: {
+  profile: StudentProfile;
+  documents: DocumentRecord[];
+  onComplete: (profile: StudentProfile) => void;
+  onSkip: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState<StudentProfile>(profile);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogAccessibility(dialogRef, onSkip);
+
+  const assessments = useMemo(() => Object.fromEntries(
+    scholarships.map((scholarship) => [scholarship.id, evaluateEligibility(draft, scholarship, documents)]),
+  ) as Record<string, EligibilityAssessment>, [draft, documents]);
+  const potentialMatches = useMemo(
+    () => rankScholarships(scholarships, assessments).filter((item) => item.fitLabel === 'Strong fit' || item.fitLabel === 'Potential fit').length,
+    [assessments],
+  );
+
+  const steps = [
+    { eyebrow: '01 · STUDY LEVEL', title: 'Where are you in your education?', description: 'Start with the study level used by many scholarship requirements.' },
+    { eyebrow: '02 · LOCATION', title: 'Where do you study or live?', description: 'Some opportunities have state-specific conditions. Choose the closest match.' },
+    { eyebrow: '03 · APPLICANT CATEGORY', title: 'Would you like to add an applicant category?', description: 'This is optional context. Current demo rules do not filter opportunities by category.' },
+    { eyebrow: '04 · ACADEMICS', title: 'Add your current academic score', description: 'Use a sample score if you want to see academic requirements update. You can skip this.' },
+    { eyebrow: '05 · FINANCIAL CONTEXT', title: 'Add an annual family-income figure?', description: 'Income-based rules may remain unresolved if you leave this blank. Use fictional demo values only.' },
+  ];
+  const update = (key: keyof StudentProfile, value: string | number | undefined) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+  const submitStep = (event: FormEvent) => {
+    event.preventDefault();
+    if (step < steps.length - 1) setStep((current) => current + 1);
+    else onComplete(draft);
+  };
+  const skipStep = () => {
+    if (step === steps.length - 1) onComplete(draft);
+    else setStep((current) => current + 1);
+  };
+
+  return <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-ink/55 p-3 backdrop-blur-sm sm:p-6" role="presentation">
+    <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="onboarding-title" className="my-auto w-full max-w-2xl overflow-hidden rounded-[26px] bg-white shadow-lift">
+      <div className="bg-ink px-6 py-6 text-white sm:px-8 sm:py-7">
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[#B9DCCB]"><GraduationCap size={16} /> GRANTLY · Personalize your workspace</div>
+          <button type="button" onClick={onSkip} aria-label="Skip onboarding and use the sample profile" className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="mt-6 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.12em] text-slate-300"><span>Build your starting profile</span><span>{steps[step].eyebrow} · Step {step + 1} of {steps.length}</span></div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#BDE2CC] transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+        <h2 id="onboarding-title" className="mt-5 font-display text-2xl font-extrabold tracking-[-.04em] sm:text-[30px]">{steps[step].title}</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{steps[step].description}</p>
+      </div>
+      <form onSubmit={submitStep} className="space-y-6 px-6 py-6 sm:px-8 sm:py-7">
+        {step === 0 && <Field label="Study level"><select autoFocus data-dialog-initial-focus className="field" value={draft.level} onChange={(event) => update('level', event.target.value as StudentProfile['level'])}><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option></select></Field>}
+        {step === 1 && <Field label="State / union territory"><select autoFocus data-dialog-initial-focus className="field" value={draft.state} onChange={(event) => update('state', event.target.value)}><option>Karnataka</option><option>Kerala</option><option>Tamil Nadu</option><option>Andhra Pradesh</option><option>Telangana</option><option>Maharashtra</option><option>Delhi</option><option>Other</option></select></Field>}
+        {step === 2 && <Field label="Applicant category (optional)"><select autoFocus data-dialog-initial-focus className="field" value={draft.category} onChange={(event) => update('category', event.target.value)}><option value="general">General</option><option value="obc">OBC</option><option value="sc">SC</option><option value="st">ST</option><option value="first_generation">First-generation learner</option><option value="prefer_not_to_say">Prefer not to say</option></select></Field>}
+        {step === 3 && <Field label="Academic score / GPA out of 10 (optional)"><input autoFocus data-dialog-initial-focus className="field" type="number" min="0" max="10" step="0.01" value={draft.gpa ?? ''} onChange={(event) => update('gpa', event.target.value === '' ? undefined : Number(event.target.value))} placeholder="For example, 8.2" /><span className="mt-1.5 block text-[11px] text-muted">Leave blank if you prefer not to share it in this demo.</span></Field>}
+        {step === 4 && <Field label="Annual family income in ₹ (optional)"><input autoFocus data-dialog-initial-focus className="field" type="number" min="0" value={draft.familyIncome ?? ''} onChange={(event) => update('familyIncome', event.target.value === '' ? undefined : Number(event.target.value))} placeholder="For example, 450000" /><span className="mt-1.5 block text-[11px] text-muted">Leave blank to keep income-based requirements marked as needing verification.</span></Field>}
+        <div className="rounded-2xl border border-green/15 bg-[#F0F5F0] p-4">
+          <div className="flex items-end justify-between gap-3">
+            <div><div className="eyebrow text-green-dark">Live from your profile</div><div className="mt-1 font-display text-2xl font-extrabold text-ink">{potentialMatches} potential match{potentialMatches === 1 ? '' : 'es'}</div><p className="mt-1 text-[11px] leading-4 text-muted">Across {scholarships.length} fictional demo opportunities, using the current requirement rules.</p></div>
+            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-green-dark sm:flex"><Target size={20} /></div>
+          </div>
+        </div>
+        <p className="text-[10px] leading-4 text-muted">Demo privacy note: use fictional values only. Profile data stays unencrypted in this browser. Applicant category is optional and does not affect current sample matching rules.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={step === 0} onClick={() => setStep((current) => current - 1)} className="btn-secondary px-3 disabled:opacity-40">Back</button>
+            {step >= 2 && <button type="button" onClick={skipStep} className="btn-ghost px-2">Skip question</button>}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onSkip} className="hidden text-xs font-semibold text-muted hover:text-ink sm:inline-flex">Use sample profile</button>
+            <button type="submit" className="btn-primary">{step === steps.length - 1 ? 'Show my matches' : 'Continue'} <ArrowRight size={14} /></button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>;
+}
+
 function App() {
   const [state, setState] = useLocalStorage<AppState>('grantly-workspace-v1', initialState, isAppState);
+  const [onboardingComplete, setOnboardingComplete] = useLocalStorage<boolean>('grantly-onboarding-complete-v1', false, (value): value is boolean => typeof value === 'boolean');
   const [page, setPage] = useState<Page>('overview');
   const [selectedScholarshipId, setSelectedScholarshipId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -826,23 +984,26 @@ function App() {
     else if (action.scholarshipId) setSelectedScholarshipId(action.scholarshipId);
   };
 
+  const saveProfile = (profile: StudentProfile) => {
+    setState((previous) => {
+      const nextApplications = previous.applications.map((application) => {
+        const scholarship = scholarships.find((item) => item.id === application.scholarshipId);
+        if (!scholarship) return application;
+        const assessment = evaluateEligibility(profile, scholarship, previous.documents);
+        return reconcileApplicationStage(application, assessment);
+      });
+      return { ...previous, profile, applications: nextApplications };
+    });
+    setOnboardingComplete(true);
+    notify('Profile saved. Scholarship assessments are up to date.');
+  };
+
   const renderPage = () => {
     if (page === 'overview') return <Dashboard state={state} recommendations={recommendations} actions={actions} onNavigate={setPage} onOpen={(scholarship) => setSelectedScholarshipId(scholarship.id)} onOpenAction={handleAction} />;
     if (page === 'discover') return <Discovery state={state} recommendations={recommendations} onOpen={(scholarship) => setSelectedScholarshipId(scholarship.id)} onSave={toggleSaved} onApply={addApplication} />;
     if (page === 'applications') return <ApplicationsPage state={state} assessments={assessments} onOpen={(scholarship) => setSelectedScholarshipId(scholarship.id)} onStageChange={updateStage} onChecklistToggle={toggleChecklist} onDiscover={() => setPage('discover')} />;
     if (page === 'documents') return <DocumentsPage documents={state.documents} onStatusChange={updateDocumentStatus} />;
-    return <ProfilePage key={JSON.stringify(state.profile)} profile={state.profile} onSave={(profile) => {
-      setState((previous) => {
-        const nextApplications = previous.applications.map((application) => {
-          const scholarship = scholarships.find((item) => item.id === application.scholarshipId);
-          if (!scholarship) return application;
-          const assessment = evaluateEligibility(profile, scholarship, previous.documents);
-          return reconcileApplicationStage(application, assessment);
-        });
-        return { ...previous, profile, applications: nextApplications };
-      });
-      notify('Profile saved. Scholarship assessments are up to date.');
-    }} />;
+    return <ProfilePage key={JSON.stringify(state.profile)} profile={state.profile} onSave={saveProfile} />;
   };
 
   return <div className="min-h-screen bg-canvas text-ink">
@@ -851,6 +1012,7 @@ function App() {
       <Sidebar page={page} setPage={setPage} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 outline-none"><Header page={page} profile={state.profile} onMenu={() => setMobileOpen((open) => !open)} menuOpen={mobileOpen} onProfile={() => setPage('profile')} /><div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8 lg:px-9"><div className="mb-5 flex items-center gap-2 text-[10px] font-semibold text-muted"><span className="text-green-dark">GRANTLY</span><ChevronRight size={12} /><span className="capitalize">{page === 'overview' ? 'Workspace overview' : page === 'profile' ? 'Student profile' : page === 'discover' ? 'Scholarship discovery' : page === 'documents' ? 'Document center' : 'Application tracker'}</span></div>{renderPage()}</div></main>
     </div>
+    {!onboardingComplete && <OnboardingWizard profile={state.profile} documents={state.documents} onComplete={saveProfile} onSkip={() => setOnboardingComplete(true)} />}
     {selectedScholarship && selectedAssessment && <ScholarshipModal scholarship={selectedScholarship} assessment={selectedAssessment} saved={state.savedScholarshipIds.includes(selectedScholarship.id)} applied={state.applications.some((application) => application.scholarshipId === selectedScholarship.id)} onClose={() => setSelectedScholarshipId(null)} onSave={() => toggleSaved(selectedScholarship.id)} onApply={() => addApplication(selectedScholarship.id)} />}
     {toast && <div role="status" aria-live="polite" className="fixed bottom-5 left-1/2 z-[90] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-ink px-4 py-3 text-xs font-semibold text-white shadow-lift"><CheckCircle2 size={15} className="text-[#A5D9BA]" />{toast}</div>}
   </div>;
