@@ -23,8 +23,11 @@ npm run preview
 
 ## What is implemented
 
-- Student profile editor with editable study level, GPA, income, category, and state.
-- Scholarship discovery with keyword search, category and study-level filters, explainable personalized ranking, and sorting.
+- First-run five-step onboarding with a live match count, optional academic/financial details, and a saved completion flag.
+- Today action center that elevates the next recommended task and shows two follow-up actions.
+- Student profile editor with editable name, study level, GPA, income, category, and state.
+- Scholarship discovery with keyword search, category and study-level filters, explainable personalized ranking, quick filters for fully matched requirements and deadlines closing within seven days, and sorting.
+- Requirement-based match and attention chips on scholarship cards.
 - Side-by-side comparison of up to three opportunities, including award, deadlines, profile fit, requirement-by-requirement status differences, and criterion-specific decision highlights (strongest profile fit, highest award, soonest open deadline, and fewest requirements needing attention).
 - Scholarship detail panel with requirement-by-requirement explanations.
 - Deterministic eligibility evaluation supporting all operators in the supplied data model.
