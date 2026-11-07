@@ -1,4 +1,4 @@
-# GRANTLY v1.4.0 — Scholarship discovery & application-readiness workspace
+# GRANTLY v1.5.0 — Scholarship discovery & application-readiness workspace
 
 **Live demo:** https://grantly-scholarship-workspace.vercel.app/
 
