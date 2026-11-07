@@ -8,13 +8,14 @@ Suggested demo length: 2–3 minutes. Use the seeded fictional student and schol
 
 ## Live walkthrough (about 2 minutes)
 
-1. **Overview:** Start on the dashboard. Point out potential matches, active applications, upcoming deadlines, document status, and the Next Best Actions panel. Explain that these values are derived from the current demo profile, scholarship requirements, documents, and application records.
-2. **Discover:** Open Discover Scholarships. Search or filter the sample opportunities. Explain that the profile-fit index describes alignment with listed requirements; it is not a guarantee of eligibility or an award probability.
-3. **Compare:** Select up to three sample scholarships and open Compare. Highlight the award amounts, deadlines, matched requirements, unresolved requirements, missing documents, and independent comparison insights. Emphasize that GRANTLY does not declare a universal winner because students can prioritize different things.
-4. **Explain eligibility:** Open a scholarship assessment. Show the distinction between `matched`, `not_matched`, `needs_verification`, and `document_missing`. Missing profile information is not treated as a hard mismatch.
-5. **Resolve an action:** Open Document Center. Change the academic transcript from uploaded to verified. Return to Overview and show that the related verification action disappears because the shared assessment state has recalculated.
-6. **Track an application:** Open My Applications. Show the preparation checklist and explain that eligibility and application readiness are separate. A student must meet the configured requirements and complete the checklist before advancing to Ready/Applied.
-7. **Persistence:** Refresh the page and show that the browser-local demo state remains.
+1. **First-run onboarding:** In a fresh browser profile, complete the five short steps. Show the live potential-match count changing as study level, state, GPA, and optional income are updated. Applicant category is collected as optional context but does not affect the current sample rules.
+2. **Overview / Today:** Start on the dashboard after onboarding. Point out the time-aware greeting, the Today action center's recommended next step, two follow-up actions, potential matches, active applications, upcoming deadlines, and document status. Explain that these values are derived from the saved demo profile, scholarship requirements, documents, and application records.
+3. **Discover:** Open Discover Scholarships. Search or filter the sample opportunities. Explain that the profile-fit index describes alignment with listed requirements; it is not a guarantee of eligibility or an award probability.
+4. **Compare:** Select up to three sample scholarships and open Compare. Highlight the award amounts, deadlines, matched requirements, unresolved requirements, missing documents, and independent comparison insights. Emphasize that GRANTLY does not declare a universal winner because students can prioritize different things.
+5. **Explain eligibility:** Open a scholarship assessment. Show the distinction between `matched`, `not_matched`, `needs_verification`, and `document_missing`. Missing profile information is not treated as a hard mismatch.
+6. **Resolve an action:** Open Document Center. Change the academic transcript from uploaded to verified. Return to Overview and show that the related verification action disappears because the shared assessment state has recalculated.
+7. **Track an application:** Open My Applications. Show the preparation checklist and explain that eligibility and application readiness are separate. A student must meet the configured requirements and complete the checklist before advancing to Ready/Applied.
+8. **Persistence:** Refresh the page and show that the browser-local demo state remains.
 
 ## Closing (15 seconds)
 
