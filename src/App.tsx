@@ -416,8 +416,9 @@ function TodayPanel({ actions, recommendations, onOpenAction, onNavigate }: {
   onOpenAction: (action: ActionItem) => void;
   onNavigate: (page: Page) => void;
 }) {
-  const primary = actions[0];
-  const secondary = actions.slice(1, 3);
+  const visibleActions = actions.slice(0, 3);
+  const primary = visibleActions[0];
+  const secondary = visibleActions.slice(1);
   const related = primary?.scholarshipId
     ? recommendations.find((item) => item.scholarship.id === primary.scholarshipId)
     : undefined;
@@ -434,7 +435,7 @@ function TodayPanel({ actions, recommendations, onOpenAction, onNavigate }: {
         <h3 className="mt-1 font-display text-lg font-extrabold tracking-[-.03em] text-ink">What should I do next?</h3>
         <p className="mt-1 text-xs text-muted">A focused next step, based on your profile, documents and deadlines.</p>
       </div>
-      {actions.length > 0 && <span className="rounded-full bg-green-soft px-2.5 py-1 text-[10px] font-bold text-green-dark">{actions.length} suggested action{actions.length === 1 ? '' : 's'}</span>}
+      {visibleActions.length > 0 && <span className="rounded-full bg-green-soft px-2.5 py-1 text-[10px] font-bold text-green-dark">{visibleActions.length} next action{visibleActions.length === 1 ? '' : 's'}</span>}
     </div>
     {primary ? <>
       <div className="bg-[#F0F5F0] p-5 sm:p-6">
@@ -489,6 +490,8 @@ function Dashboard({ state, recommendations, actions, onNavigate, onOpen, onOpen
       <div className="relative max-w-2xl"><div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.15em] text-[#B9DCCB]"><Sparkles size={13} /> Your scholarship workspace</div><h2 className="mt-4 font-display text-[27px] font-extrabold leading-tight tracking-[-.05em] sm:text-[36px]">{getTimeGreeting()}, {name}.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">The next step is easier when you know what matters. Explore relevant opportunities, resolve requirements, and keep your applications moving.</p><div className="mt-5 flex flex-wrap gap-2"><button onClick={() => onNavigate('discover')} className="inline-flex items-center gap-2 rounded-xl bg-[#BDE2CC] px-4 py-2.5 text-xs font-bold text-ink transition hover:bg-white">Explore scholarships <ArrowRight size={14} /></button><button onClick={() => onNavigate('applications')} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/10">View applications</button></div></div>
     </section>
 
+    <TodayPanel actions={actions} recommendations={recommendations} onOpenAction={onOpenAction} onNavigate={onNavigate} />
+
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={Compass} label="Potential matches" value={String(potentialMatches).padStart(2, '0')} note="No confirmed requirement mismatch" tone="green" />
       <Metric icon={BriefcaseBusiness} label="Active applications" value={String(tracked).padStart(2, '0')} note="Tracked opportunities in progress" tone="navy" />
@@ -496,14 +499,13 @@ function Dashboard({ state, recommendations, actions, onNavigate, onOpen, onOpen
       <Metric icon={FileCheck2} label="Documents verified" value={`${state.documents.filter((doc) => doc.status === 'verified').length}/${state.documents.length}`} note="Metadata only · No files stored" tone="green" />
     </div>
 
-    <div className="grid gap-6 xl:grid-cols-[1.35fr_.85fr]">
+    <div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-5 sm:px-6"><div><div className="eyebrow">Ranked by your profile</div><h3 className="mt-1 font-display text-lg font-extrabold tracking-[-.03em] text-ink">Recommended for you</h3><p className="mt-1 text-[11px] text-muted">Transparent requirement fit · not award probability</p></div><button onClick={() => onNavigate('discover')} className="btn-ghost px-2">View all <ArrowRight size={14} /></button></div>
         <div className="divide-y divide-line">{recommended.map((item) => <button key={item.scholarship.id} onClick={() => onOpen(item.scholarship)} className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50 sm:px-6"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F0F4F0] text-green"><GraduationCap size={20} /></div><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-ink">{item.scholarship.title}</div><div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span>{currency(item.scholarship.amount)}</span><span>·</span><span>Due {shortDate(item.scholarship.deadline)}</span><span>·</span><span className={item.fitLabel === 'Strong fit' ? 'font-bold text-green-dark' : 'font-bold text-amber'}>{item.fitLabel}</span></div></div><div className="hidden min-w-[110px] sm:block"><div className="mb-1 flex justify-between text-[10px] font-bold"><span className="text-muted">Profile fit</span><span className="text-ink">{item.fitScore}</span></div><ProgressBar value={item.fitScore} tone={item.fitLabel === 'Review fit' ? 'amber' : 'green'} /></div><ChevronRight size={17} className="shrink-0 text-muted" /></button>)}</div>
         {recommended.length === 0 && <div className="px-6 py-8 text-center text-sm text-muted">No open opportunities in the current demo catalogue.</div>}
       </Card>
 
-      <TodayPanel actions={actions} recommendations={recommendations} onOpenAction={onOpenAction} onNavigate={onNavigate} />
     </div>
 
     <div className="grid gap-6 lg:grid-cols-[1fr_.8fr]">
