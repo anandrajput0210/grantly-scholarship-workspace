@@ -1,10 +1,13 @@
 # GRANTLY v1.4.0 — Scholarship discovery & application-readiness workspace
 
+**Live demo:** https://grantly-scholarship-workspace.vercel.app/
+
+
 A frontend-only React + TypeScript + Tailwind CSS single-page application. It uses a deterministic eligibility engine and persists the demo workspace in browser `localStorage`.
 
 ## Run locally
 
-Requirements: Node.js 18+ and npm.
+Requirements: Node.js 20 and npm.
 
 ```bash
 npm install
